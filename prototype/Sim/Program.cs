@@ -1,4 +1,4 @@
-// ±9 プロト — 動作確認 & バランス検証ランナー(1v1 / CPU vs CPU)
+// ±9 プロト — 動作確認 & バランス検証ランナー(1v1 / CPU vs CPU / 新ルール)
 using System;
 using System.Collections.Generic;
 using PlusMinusNine;
@@ -23,27 +23,26 @@ const int MaxTurns = 300;
 void PrintTurn(GameState g, TurnResult r)
 {
     string Dir(Direction d) => d switch { Direction.ToOpponent => "→相手", Direction.ToSelf => "→自分", _ => "無効" };
+    string esc = r.Escalation > 1 ? $"  [×{r.Escalation}]" : "";
     Console.WriteLine($"T{g.Turn,-3} コイン:{(r.FinalCoin == Coin.Odd ? "奇" : "偶")}" +
         $"  P0合計={r.FinalTotal[0],4}({Dir(r.Dir[0])})  P1合計={r.FinalTotal[1],4}({Dir(r.Dir[1])})" +
-        $"  HP {r.HpBefore[0]}->{r.HpAfter[0]} / {r.HpBefore[1]}->{r.HpAfter[1]}");
+        $"  HP {r.HpBefore[0]}->{r.HpAfter[0]} / {r.HpBefore[1]}->{r.HpAfter[1]}{esc}");
     foreach (var l in r.Log) Console.WriteLine("      " + l);
 }
 
 // ---- 1) 1試合の詳細ログ ----
-Console.WriteLine("==== サンプル1試合(④絶対値+8 vs ①コイン反転) ====");
-RunGame(ItemType.AbsBoost, ItemType.CoinFlip, seed: 12345, verbose: true);
+Console.WriteLine("==== サンプル1試合(②符号反転 vs ①コイン反転) ====");
+RunGame(ItemType.SignFlip, ItemType.CoinFlip, seed: 12345, verbose: true);
 
 // ---- 2) バランス検証(アイテム別 勝率マトリクス) ----
 Console.WriteLine("\n==== バランス検証 (各マッチアップ M=400戦) ====");
-var items = new[] { ItemType.None, ItemType.CoinFlip, ItemType.DrawBoost, ItemType.Reshuffle, ItemType.AbsBoost, ItemType.DoubleShift };
+var items = new[] { ItemType.None, ItemType.CoinFlip, ItemType.SignFlip, ItemType.DoubleShift };
 string Short(ItemType t) => t switch
 {
     ItemType.None => "無",
     ItemType.CoinFlip => "①反転",
-    ItemType.DrawBoost => "②ドロ",
-    ItemType.Reshuffle => "③シャ",
-    ItemType.AbsBoost => "④+8",
-    ItemType.DoubleShift => "⑤±7",
+    ItemType.SignFlip => "②符号",
+    ItemType.DoubleShift => "③±7",
     _ => "?"
 };
 

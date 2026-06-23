@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""±9 プレイ画面イメージ(モックアップ)を生成して mockup.png に出力。"""
+"""±9 プレイ画面イメージ(モックアップ)を生成して mockup.png に出力。(新ルール)"""
+import os
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1680, 1120
@@ -20,9 +21,24 @@ BACK    = (44, 58, 86)        # カード裏面
 img = Image.new("RGB", (W, H), BG)
 d = ImageDraw.Draw(img)
 
+# フォントは環境差を吸収(Windows=游ゴシック / Linux=IPAゴシック等にフォールバック)
+_FONT_CANDIDATES = {
+    True: ["C:/Windows/Fonts/YuGothB.ttc",
+           "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf",
+           "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"],
+    False: ["C:/Windows/Fonts/YuGothM.ttc",
+            "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+            "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"],
+}
+
 def F(sz, bold=False):
-    path = "C:/Windows/Fonts/YuGothB.ttc" if bold else "C:/Windows/Fonts/YuGothM.ttc"
-    return ImageFont.truetype(path, sz)
+    for path in _FONT_CANDIDATES[bool(bold)]:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, sz)
+            except Exception:
+                pass
+    return ImageFont.load_default()
 
 def rr(xy, r, fill, outline=None, width=2):
     d.rounded_rectangle(xy, radius=r, fill=fill, outline=outline, width=width)
@@ -41,14 +57,15 @@ def hp_bar(x, y, w, h, val, label, danger_hi=False):
     # 中央100ライン
     midx = x + w*100/200
     d.line((midx, y+4, midx, y+h-4), fill=GREY, width=2)
-    # 値ゲージ(100からの差分)
+    # 値ゲージ(100からの差分)。HP非公開:色は＋寄り=青/−寄り=赤、数値は出さない
     px = x + w*val/200
+    col = BLUE if val >= 100 else RED
     if val >= 100:
-        rr((midx, y+5, px, y+h-5), (h-10)//2, GREEN)
+        rr((midx, y+5, px, y+h-5), (h-10)//2, col)
     else:
-        rr((px, y+5, midx, y+h-5), (h-10)//2, RED)
+        rr((px, y+5, midx, y+h-5), (h-10)//2, col)
     d.text((x, y-10), label, font=F(22, True), fill=WHITE, anchor="lb")
-    d.text((x+w, y-10), f"HP {val} / 200", font=F(22, True), fill=WHITE, anchor="rb")
+    d.text((x+w, y-10), "HP非公開(ゲージ＋色のみ)", font=F(16), fill=GREY, anchor="rb")
     d.text((x-4, y+h+6), "0 敗北", font=F(15), fill=RED, anchor="lt")
     d.text((x+w+4, y+h+6), "200 敗北", font=F(15), fill=RED, anchor="rt")
 
@@ -68,7 +85,7 @@ def card(x, y, w, h, kind, txt, face_up=True):
 # ================= 相手エリア =================
 rr((24, 90, 1180, 250), 14, PANEL, outline=(54,68,96), width=2)
 hp_bar(60, 140, 760, 30, 128, "相手プレイヤー")
-# 相手の伏せカード(前半3+後半2)
+# 相手の伏せカード(前半2枚以上+後半1枚以上・最大5枚)
 ox = 880
 d.text((ox, 118), "場(伏せ)", font=F(18), fill=GREY, anchor="lm")
 for i in range(5):
@@ -88,7 +105,7 @@ d.ellipse((coin_cx-60, coin_cy-60, coin_cx+60, coin_cy+60), outline=GOLD_D, widt
 ctext(coin_cx, coin_cy-14, "奇", F(54, True), (60,44,0))
 ctext(coin_cx, coin_cy+34, "ODD", F(20, True), (90,70,0))
 ctext(coin_cx, coin_cy+108, "コイントス(共通)", F(20, True), WHITE)
-ctext(coin_cx, coin_cy+138, "前半と後半の間に公開", F(16), GREY)
+ctext(coin_cx, coin_cy+138, "ラウンド頭に公開(当たり偶奇)", F(16), GREY)
 
 # --- 左:相手の出し札 / 右:自分の出し札(前半・後半) ---
 def phase_slot(x, y, label, cards):
@@ -112,12 +129,12 @@ hp_bar(60, 668, 760, 30, 92, "あなた")
 # --- アイテム & コスト(自分・開始時公開) ---
 rr((852, 660, 1168, 752), 10, PANEL2, outline=(70,84,112), width=2)
 d.text((868, 678), "持ち込みアイテム(公開)", font=F(13), fill=GREY, anchor="lm")
-d.text((868, 702), "④ 絶対値ブースト+8", font=F(18, True), fill=GOLD, anchor="lm")
-d.text((868, 731), "コスト", font=F(15), fill=WHITE, anchor="lm")
-cgx = 938
-for i in range(4):
+d.text((868, 702), "② 符号反転(向き)", font=F(18, True), fill=GOLD, anchor="lm")
+d.text((868, 731), "チャージ", font=F(15), fill=WHITE, anchor="lm")
+cgx = 960
+for i in range(3):
     rr((cgx + i*24, 722, cgx + i*24 + 18, 742), 4, GREEN, outline=(70,84,112), width=1)
-d.text((cgx + 4*24 + 8, 731), "4 / 4  発動可", font=F(15, True), fill=GREEN, anchor="lm")
+d.text((cgx + 3*24 + 8, 731), "3 / 3  発動可", font=F(15, True), fill=GREEN, anchor="lm")
 
 # 手札
 d.text((60, 740), "手札", font=F(20, True), fill=WHITE, anchor="lm")
@@ -126,7 +143,7 @@ hx = 60
 for i,(k,t) in enumerate(hand):
     y = 770 + (8 if i%2 else 0)
     card(hx + i*112, y, 96, 138, k, t)
-d.text((60, 940), "ドラッグ&ドロップで場に配置(前半3枚→後半2枚) / 破棄でコストを貯めてアイテム発動", font=F(17), fill=GREY, anchor="lm")
+d.text((60, 940), "ドラッグ&ドロップで場に配置(前半2枚以上→後半1枚以上) / チャージでコストを貯めてアイテム発動", font=F(17), fill=GREY, anchor="lm")
 
 # 凡例
 ly = 1010
