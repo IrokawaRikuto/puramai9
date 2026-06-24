@@ -369,7 +369,7 @@ public class PlusMinusNineGame : MonoBehaviour
             int bk = GameState.ComputePhase(_back, 0, out bool bb);
             if (fb) fr += shiftF;
             if (bb) bk += shiftB;
-            total = fr + bk;
+            total = GameState.ApplyPlus5(fr + bk, GameState.Plus5Count(tmp));
         }
         if (useItem && _myItem == ItemType.SignFlip) total = -total;
         return total;

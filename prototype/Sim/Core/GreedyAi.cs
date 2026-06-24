@@ -66,7 +66,7 @@ namespace PlusMinusNine
                 int bk = GameState.ComputePhase(p.Back, 0, out bool bb);
                 if (fb) fr += shiftF;
                 if (bb) bk += shiftB;
-                total = fr + bk;
+                total = GameState.ApplyPlus5(fr + bk, GameState.Plus5Count(p));
             }
             if (p.UseItem && me.Item == ItemType.SignFlip) total = -total;
             return total;

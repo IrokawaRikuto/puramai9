@@ -159,14 +159,13 @@ namespace PlusMinusNine
             if (!anyBlue) { hadBlue = false; return 0; }
             hadBlue = true;
 
-            // 足し算(ブルー合計)を先に処理 → レッドを左から適用
+            // 足し算(ブルー合計)を先に処理 → 乗算レッドを左から適用
             int val = blueSum;
-            int blueSign = Math.Sign(blueSum);
             foreach (var c in cards)
             {
                 if (c.Kind != CardKind.Red) continue;
                 if (c.IsMultiplier) val *= c.Multiplier;
-                else if (c.IsPlus5) val += 5 * (blueSign == 0 ? 0 : blueSign);
+                // ※ ±5(Plus5)はフェイズ内では計算しない。最終合計に対して最後に適用(ApplyPlus5)
             }
             // ③ ±7(ブルーがあるので乗る)
             val += shift7;
@@ -174,6 +173,19 @@ namespace PlusMinusNine
         }
 
         static int Parity(int v) => ((v % 2) + 2) % 2; // 0=偶,1=奇
+
+        // ±5(Plus5)の枚数。±5は「最終合計の絶対値を+5」する効果で、最後に計算する。
+        public static int Plus5Count(TurnPlan plan)
+        {
+            int n = 0;
+            foreach (var c in plan.Front) if (c.IsPlus5) n++;
+            foreach (var c in plan.Back) if (c.IsPlus5) n++;
+            return n;
+        }
+
+        // 最終合計の絶対値を 5×枚数 だけ増やす(符号は最終合計に従う。合計0なら無効)。
+        public static int ApplyPlus5(int total, int count)
+            => (count == 0 || total == 0) ? total : total + (total > 0 ? 1 : -1) * 5 * count;
 
         /// <summary>同じブルー数字を5枚以上出していれば true(5枚一致→±45)。揃った数字の符号を返す。</summary>
         public static bool FiveMatch(TurnPlan plan, out int matchSign)
@@ -286,8 +298,8 @@ namespace PlusMinusNine
                 else res.Dir[i] = (Parity(t) == coinPar) ? Direction.ToOpponent : Direction.ToSelf;
             }
 
-            // エスカレーション倍率
-            int mult = EscalationMult(Turn);
+            // エスカレーション倍率(OT中は一律×5)
+            int mult = Overtime ? 5 : EscalationMult(Turn);
             res.Escalation = mult;
 
             // HP反映(同時着弾・倍率込み)
@@ -345,9 +357,11 @@ namespace PlusMinusNine
                 if (fb) fr += frontShift;
                 if (bb) bk += backShift;
                 total = fr + bk;
+                // ±5は最終合計の絶対値を増やす(最後に計算)。ゴールド時は±9化されるので適用しない
+                total = ApplyPlus5(total, Plus5Count(plan));
             }
 
-            // ② 符号反転(偶奇は不変)
+            // ② 符号反転(偶奇は不変)。ゴールドで選んだ符号も反転する
             if (plan.UseItem && pl.Item == ItemType.SignFlip) total = -total;
             return total;
         }
